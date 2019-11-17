@@ -152,7 +152,7 @@ def wct_np(content, style, alpha=0.6, eps=1e-5):
 
 ### Style-Swap WCT ###
 
-def wct_style_swap(content, style, alpha, patch_size=3, stride=1, eps=1e-8):
+def wct_style_swap(content, style, alpha, patch_size=2, stride=2, eps=1e-8):
     '''Modified Whiten-Color Transform that performs style swap on whitened content/style encodings before coloring
        Assume that content/style encodings have shape 1xHxWxC
     '''
@@ -246,6 +246,7 @@ def style_swap(content, style, patch_size, stride):
     style_patches_norm = tf.nn.l2_normalize(style_patches, axis=3)
 
     # Compute cross-correlation/nearest neighbors of patches by using style patches as conv filters
+    print(content.shape, style_patches_norm.shape, stride)
     ss_enc = tf.nn.conv2d(input=content,
                           filters=style_patches_norm,
                           strides=[1, stride, stride, 1],

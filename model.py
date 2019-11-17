@@ -6,7 +6,7 @@ import tensorflow as tf
 from tensorflow.keras.layers import Input, UpSampling2D
 from tensorflow.keras.models import Model
 
-from ops import Conv2DReflect, Conv2DRelu
+from ops import Conv2DReflect, Conv2DRelu, wct_style_swap
 from vgg_normalised import vgg_from_t7
 
 
@@ -25,9 +25,15 @@ class WCTModel(Model):
         self.encoder = self.vgg_model.get_layer(relu_target)
         self.decoder = self.build_decoder(input_shape=(256, 256, 3), relu_target=relu_target)
 
-    def __call__(self, x, training):
-        x = self.encoder(x)
-        return self.decoder(x, training)
+    def __call__(self, content, training, style=None):
+        if training:
+            decoder_input = self.encoder(content)
+        else:
+            content_encoded = self.encoder(content)
+            style_encoded = self.encoder(style)
+            decoder_input = wct_style_swap(content_encoded, style_encoded, 0.6)
+
+        return self.decoder(decoder_input)
 
     def build_decoder(self, input_shape, relu_target):
         '''Build the decoder architecture that reconstructs from a given VGG relu layer.

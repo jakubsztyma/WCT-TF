@@ -76,12 +76,14 @@ def main():
         content_img = get_img(content_fullpath)
         if args.content_size > 0:
             content_img = resize_to(content_img, args.content_size)
+            content_img = center_crop(content_img, 256)
 
         for style_fullpath in style_files:
             style_prefix, _ = os.path.splitext(style_fullpath)
             style_prefix = os.path.basename(style_prefix)  # Extract filename prefix without ext
 
             style_img = get_img(style_fullpath)
+            style_img = center_crop(style_img, 256)
 
             if args.style_size > 0:
                 style_img = resize_to(style_img, args.style_size)

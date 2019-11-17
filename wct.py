@@ -65,6 +65,7 @@ class WCT(object):
            Returns:
                Stylized image with pixels in [0,255]
         '''
+        s = time.time()
         # If doing style swap and stride > 1 the content might need to be resized for the filter to fit
         if swap5 is True and self.ss_stride != 1:
             old_H, old_W = content.shape[:2]
@@ -78,18 +79,7 @@ class WCT(object):
         content = self.preprocess(content)
         style = self.preprocess(style)
 
-        s = time.time()
-        print(content.shape)
-        print(type(content))
-        print(tf.math.reduce_max(content))
-        stylized = self.model(content, training=False)
-        # stylized = self.sess.run(self.decoded_output, feed_dict={
-        #                                                   self.content_input: content,
-        #                                                   self.model.style_input: style,
-        #                                                   self.model.alpha: alpha,
-        #                                                   self.model.swap5: swap5,
-        #                                                   self.model.ss_alpha: ss_alpha,
-        #                                                   self.model.use_adain: adain})
-        print("Stylized in:", time.time() - s)
+        stylized = self.model(content, training=False, style=style)
 
+        print("Stylized in:", time.time() - s)
         return self.postprocess(stylized[0])
