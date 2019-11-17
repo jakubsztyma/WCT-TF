@@ -27,7 +27,7 @@ class WCTModel(Model):
 
     def __call__(self, x, training):
         x = self.encoder(x)
-        return self.decoder(x)
+        return self.decoder(x, training)
 
     def build_decoder(self, input_shape, relu_target):
         '''Build the decoder architecture that reconstructs from a given VGG relu layer.

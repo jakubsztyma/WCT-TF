@@ -103,7 +103,7 @@ def train():
     for iteration in range(args.max_iter):
         start = time.time()
 
-        batch = next(content_images)\
+        batch = next(content_images)
         train_step(batch, batch)
 
         test_batch = next(content_images)

@@ -26,41 +26,26 @@ class WCT(object):
         self.ss_patch_size = ss_patch_size
         self.ss_stride = ss_stride
 
-        graph = tf.get_default_graph()
+        # Build the graph
+        self.model = WCTModel(relu_target=relu_targets[0], vgg_path=vgg_path)
+        checkpoint = tf.train.Checkpoint(model=self.model)
 
-        with graph.device(device):
-            # Build the graph
-            self.model = WCTModel(mode='test', relu_targets=relu_targets, vgg_path=vgg_path,
-                                  ss_patch_size=self.ss_patch_size, ss_stride=self.ss_stride)
-            
-            self.content_input = self.model.content_input
-            self.decoded_output = self.model.decoded_output
-            # self.style_encoded = None
+        config = tf.compat.v1.ConfigProto()
+        config.gpu_options.allow_growth = True
 
-            config = tf.ConfigProto(allow_soft_placement=True)
-            config.gpu_options.allow_growth = True
-            self.sess = tf.Session(config=config)
-
-            self.sess.run(tf.global_variables_initializer())
-
-            # Load decoder vars one-by-one into the graph
-            for relu_target, checkpoint_dir in zip(relu_targets, checkpoints):
-                decoder_prefix = 'decoder_{}'.format(relu_target)
-                relu_vars = [v for v in tf.trainable_variables() if decoder_prefix in v.name]
-
-                saver = tf.train.Saver(var_list=relu_vars)
-                
-                ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
-                if ckpt and ckpt.model_checkpoint_path:
-                    print('Restoring vars for {} from checkpoint {}'.format(relu_target, ckpt.model_checkpoint_path))
-                    saver.restore(self.sess, ckpt.model_checkpoint_path)
-                else:
-                    raise Exception('No checkpoint found for target {} in dir {}'.format(relu_target, checkpoint_dir))
+        # Load decoder vars one-by-one into the graph
+        # for relu_target, checkpoint_dir in zip(relu_targets, checkpoints):
+        checkpoint_dir = 'saved_model'
+        if os.path.exists(checkpoint_dir):
+            checkpoint.restore(tf.train.latest_checkpoint(checkpoint_dir))
+        else:
+            raise Exception('No checkpoint found for target {} in dir {}'.format(relu_targets[0], checkpoint_dir))
 
     @staticmethod
     def preprocess(image):
         if len(image.shape) == 3:  # Add batch dimension
             image = np.expand_dims(image, 0)
+        image = tf.dtypes.cast(image, tf.float32)
         return image / 255.        # Range [0,1]
 
     @staticmethod
@@ -91,16 +76,20 @@ class WCT(object):
 
         # Make sure shape is correct and pixels are in [0,1]
         content = self.preprocess(content)
-        style   = self.preprocess(style)
+        style = self.preprocess(style)
 
         s = time.time()
-        stylized = self.sess.run(self.decoded_output, feed_dict={
-                                                          self.content_input: content,
-                                                          self.model.style_input: style,
-                                                          self.model.alpha: alpha,
-                                                          self.model.swap5: swap5,
-                                                          self.model.ss_alpha: ss_alpha,
-                                                          self.model.use_adain: adain})
-        print("Stylized in:",time.time() - s)
+        print(content.shape)
+        print(type(content))
+        print(tf.math.reduce_max(content))
+        stylized = self.model(content, training=False)
+        # stylized = self.sess.run(self.decoded_output, feed_dict={
+        #                                                   self.content_input: content,
+        #                                                   self.model.style_input: style,
+        #                                                   self.model.alpha: alpha,
+        #                                                   self.model.swap5: swap5,
+        #                                                   self.model.ss_alpha: ss_alpha,
+        #                                                   self.model.use_adain: adain})
+        print("Stylized in:", time.time() - s)
 
         return self.postprocess(stylized[0])
