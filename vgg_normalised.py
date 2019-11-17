@@ -1,8 +1,8 @@
 import numpy as np
 import tensorflow as tf
-import keras.backend as K
-from keras.models import Model
-from keras.layers import Input, Conv2D, UpSampling2D, Activation, Lambda, MaxPooling2D
+import tensorflow.keras.backend as K
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Input, Conv2D, UpSampling2D, Activation, Lambda, MaxPooling2D
 from ops import pad_reflect
 import torchfile
 
@@ -33,8 +33,8 @@ def vgg_from_t7(t7_file, target_layer=None):
             weight = module.weight.transpose([2,3,1,0])
             bias = module.bias
             x = Conv2D(filters, kernel_size, padding='valid', activation=None, name=name,
-                        kernel_initializer=lambda shape: K.constant(weight, shape=shape),
-                        bias_initializer=lambda shape: K.constant(bias, shape=shape),
+                        # kernel_initializer=lambda shape: K.constant(weight, shape=shape), # TODO uncomment
+                        # bias_initializer=lambda shape: K.constant(bias, shape=shape), # TODO uncomment
                         trainable=False)(x)
         elif module._typename == b'nn.ReLU':
             x = Activation('relu', name=name)(x)
