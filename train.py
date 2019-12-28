@@ -114,8 +114,8 @@ def train():
             test_step(test_batch, test_batch)
 
             print(f"After iteration {iteration}:")
-            print(f"Test loss:  {test_loss.result()}")
-            print(f"Train loss:  {train_loss.result()}")
+            print(f"Test loss:  {float(test_loss.result())}")
+            print(f"Train loss:  {float(train_loss.result())}")
 
             # Reset the metrics for the next epoch
             train_loss.reset_states()
