@@ -22,8 +22,11 @@ class WCTModel(Model):
         '''
         super().__init__()
         self.vgg_model = vgg_from_t7(vgg_path, target_layer=relu_target)
-        self.encoder = self.vgg_model.get_layer(relu_target)
-        self.decoder = self.build_decoder(input_shape=(256, 256, 3), relu_target=relu_target)
+        content_layer = self.vgg_model.get_layer(relu_target).output
+        self.encoder = Model(inputs=self.vgg_model.input, outputs=content_layer)
+        channels_number = content_layer.shape[-1]
+        # self.encoder = self.vgg_model.get_layer()
+        self.decoder = self.build_decoder(input_shape=(256, 256, channels_number), relu_target=relu_target)
 
     def __call__(self, content, training, style=None):
         if training:

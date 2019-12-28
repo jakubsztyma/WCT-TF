@@ -95,7 +95,7 @@ def train():
 
     @tf.function
     def test_step(images, labels):
-        predictions = model(images, training=False)
+        predictions = model(images, training=True)
         t_loss = loss_object(labels, predictions)
 
         test_loss(t_loss)
