@@ -2,6 +2,7 @@ from __future__ import print_function, division
 
 import argparse
 import time
+import os
 
 import numpy as np
 import tensorflow as tf
@@ -122,7 +123,7 @@ def train():
             test_loss.reset_states()
 
     # Last save
-    save_path = 'saved_model/model'
+    save_path = os.path.join(args.checkpoint, 'model.ckpt')
     checkpoint.save(file_prefix=save_path)
     print(f"Model saved in file: {save_path}")
 

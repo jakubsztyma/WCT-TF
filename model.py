@@ -21,12 +21,10 @@ class WCTModel(Model):
                 vgg_path: Normalised VGG19 .t7 path
         '''
         super().__init__()
+        self.relu_target = relu_target
         self.vgg_model = vgg_from_t7(vgg_path, target_layer=relu_target)
-        content_layer = self.vgg_model.get_layer(relu_target).output
-        self.encoder = Model(inputs=self.vgg_model.input, outputs=content_layer)
-        channels_number = content_layer.shape[-1]
-        # self.encoder = self.vgg_model.get_layer()
-        self.decoder = self.build_decoder(input_shape=(256, 256, channels_number), relu_target=relu_target)
+        self.encoder = self.build_encoder()
+        self.decoder = self.build_decoder()
 
     def __call__(self, content, training, style=None):
         if training:
@@ -38,13 +36,23 @@ class WCTModel(Model):
 
         return self.decoder(decoder_input)
 
-    def build_decoder(self, input_shape, relu_target):
+    def get_layer_channels_number(self):
+        content_layer = self.vgg_model.get_layer(self.relu_target).output
+        return content_layer.shape[-1]
+
+    def build_encoder(self):
+        content_layer = self.vgg_model.get_layer(self.relu_target).output
+        return Model(inputs=self.vgg_model.input, outputs=content_layer)
+
+    def build_decoder(self):
         '''Build the decoder architecture that reconstructs from a given VGG relu layer.
 
             Args:
                 input_shape: Tuple of input tensor shape, needed for channel dimension
                 relu_target: Layer of VGG to decode from
         '''
+        input_shape = (256, 256, self.get_layer_channels_number())
+        relu_target = self.relu_target
         decoder_num = dict(zip(['relu1_1', 'relu2_1', 'relu3_1', 'relu4_1', 'relu5_1'], range(1, 6)))[relu_target]
 
         # Dict specifying the layers for each decoder level. relu5_1 is the deepest decoder and will contain all layers
