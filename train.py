@@ -16,7 +16,7 @@ kwargs_list = [
     # Directories
     dict(type=str, dest='checkpoint', help='Checkpoint save dir', required=True),
     dict(type=str, dest='log_path', help='Logging dir path'),
-    dict(type=str, dest="relu_target", help='Target VGG19 relu layer to decode from, e.g. relu4_1', required=True, ),
+    dict(nargs='+', type=str, dest="relu_target", help='Target VGG19 relu layer to decode from, e.g. relu4_1', required=True, ),
     dict(type=str, dest='content_path', help='Content images folder', required=True),
     dict(type=str, dest='val_path', help='Validation images folder', default=None),
     dict(type=str, dest='vgg_path', help='Path to vgg_normalised.t7', default='models/vgg_normalised.t7'),
@@ -82,7 +82,7 @@ def train():
     optimizer = tf.keras.optimizers.Adam()
     test_loss = tf.keras.metrics.Mean()
     train_loss = tf.keras.metrics.Mean()
-    checkpoint = tf.train.Checkpoint(model=model)
+    checkpoint = tf.train.Checkpoint(model=model.decoders[0])
 
     @tf.function
     def train_step(images, labels):
@@ -96,7 +96,7 @@ def train():
 
     @tf.function
     def test_step(images, labels):
-        predictions = model(images, training=True)
+        predictions = model(images, training=False)
         t_loss = loss_object(labels, predictions)
 
         test_loss(t_loss)
@@ -123,6 +123,8 @@ def train():
             test_loss.reset_states()
 
     # Last save
+    # save_path = os.path.join(args.checkpoint)
+    # model.decoders[0].save(save_path)
     save_path = os.path.join(args.checkpoint, 'model.ckpt')
     checkpoint.save(file_prefix=save_path)
     print(f"Model saved in file: {save_path}")

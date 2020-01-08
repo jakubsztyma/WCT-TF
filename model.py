@@ -21,38 +21,53 @@ class WCTModel(Model):
                 vgg_path: Normalised VGG19 .t7 path
         '''
         super().__init__()
-        self.relu_target = relu_target
         self.vgg_model = vgg_from_t7(vgg_path, target_layer=relu_target)
-        self.encoder = self.build_encoder()
-        self.decoder = self.build_decoder()
+        self.encoders = []
+        self.decoders = []
+
+        for relu_target in relu_target:
+            self.encoders.append(self.build_encoder(relu_target))
+            self.decoders.append(self.build_decoder(relu_target))
 
     def __call__(self, content, training, style=None):
         if training:
-            decoder_input = self.encoder(content)
+            decoded = self.train_call(content)
         else:
-            content_encoded = self.encoder(content)
-            style_encoded = self.encoder(style)
-            decoder_input = wct_style_swap(content_encoded, style_encoded, 0.6)
+            decoded = self.test_call(content)
 
-        return self.decoder(decoder_input)
+        return decoded
 
-    def get_layer_channels_number(self):
-        content_layer = self.vgg_model.get_layer(self.relu_target).output
+    def train_call(self, content):
+        decoder_input = self.encoders[0](content)
+        return self.decoders[0](decoder_input)
+
+    def test_call(self, content):
+        encoder_input = content
+        decoded = []
+
+        for encoder, decoder in zip(self.encoders, self.decoders):
+            encoded = encoder(encoder_input)
+            decoded = decoder(encoded)
+            encoder_input = decoded
+
+        return decoded
+
+    def get_layer_channels_number(self, relu_target):
+        content_layer = self.vgg_model.get_layer(relu_target).output
         return content_layer.shape[-1]
 
-    def build_encoder(self):
-        content_layer = self.vgg_model.get_layer(self.relu_target).output
-        return Model(inputs=self.vgg_model.input, outputs=content_layer)
+    def build_encoder(self, relu_target):
+        content_layer = self.vgg_model.get_layer(relu_target).output
+        return Model(inputs=self.vgg_model.input, outputs=content_layer, name=f'encoder_model_{relu_target}')
 
-    def build_decoder(self):
+    def build_decoder(self, relu_target):
         '''Build the decoder architecture that reconstructs from a given VGG relu layer.
 
             Args:
                 input_shape: Tuple of input tensor shape, needed for channel dimension
                 relu_target: Layer of VGG to decode from
         '''
-        input_shape = (256, 256, self.get_layer_channels_number())
-        relu_target = self.relu_target
+        input_shape = (256, 256, self.get_layer_channels_number(relu_target))
         decoder_num = dict(zip(['relu1_1', 'relu2_1', 'relu3_1', 'relu4_1', 'relu5_1'], range(1, 6)))[relu_target]
 
         # Dict specifying the layers for each decoder level. relu5_1 is the deepest decoder and will contain all layers
@@ -86,5 +101,5 @@ class WCTModel(Model):
         return tf.keras.Sequential([
             Input(shape=input_shape),
             *middle_layers,
-            Conv2DReflect(filters=3, activation=None)
-        ])
+            Conv2DReflect(filters=3, activation=None)],
+            name=f'decoder_model_{relu_target}')

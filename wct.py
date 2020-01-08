@@ -27,19 +27,21 @@ class WCT(object):
         self.ss_stride = ss_stride
 
         # Build the graph
-        self.model = WCTModel(relu_target=relu_targets[0], vgg_path=vgg_path)
-        checkpoint = tf.train.Checkpoint(model=self.model)
+        self.model = WCTModel(relu_target=relu_targets, vgg_path=vgg_path)
 
         config = tf.compat.v1.ConfigProto()
         config.gpu_options.allow_growth = True
 
         # Load decoder vars one-by-one into the graph
-        # for relu_target, checkpoint_dir in zip(relu_targets, checkpoints):
-        checkpoint_dir = 'saved_model'
-        if os.path.exists(checkpoint_dir):
-            checkpoint.restore(tf.train.latest_checkpoint(checkpoint_dir))
-        else:
-            raise Exception('No checkpoint found for target {} in dir {}'.format(relu_targets[0], checkpoint_dir))
+        i = 0
+        for checkpoint_dir in checkpoints:
+            if os.path.exists(checkpoint_dir):
+                checkpoint = tf.train.Checkpoint(model=self.model.decoders[i])
+                checkpoint.restore(tf.train.latest_checkpoint(checkpoint_dir))
+                # self.model.decoders[i] = tf.keras.models.load_model(checkpoint_dir)
+                i += 1
+            else:
+                raise Exception('No checkpoint found for target {} in dir {}'.format(relu_targets[0], checkpoint_dir))
 
     @staticmethod
     def preprocess(image):
