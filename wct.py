@@ -51,16 +51,15 @@ class WCT(object):
     def postprocess(image):
         return np.uint8(np.clip(image, 0, 1) * 255)
 
-    def predict(self, content, style, alpha=1, swap5=False, ss_alpha=1, adain=False):
+    def predict(self, content, styles, alpha=1, swap5=False, beta=0.5):
         '''Stylize a single content/style pair.
 
            Args:
                content: Array for content image in [0,255]
-               style: Array for style image in [0,255]
+               styles: Two arrays for style image in [0,255]
                alpha: Float blending value for WCT op in [0,1]
                swap5: If True perform style swap at layer relu5_1 instead of WCT
-               ss_alpha: [0,1] Float blending value for style-swapped feature & content feature
-               adain: Boolean indicating whether to use AdaIN transform instead of WCT
+               beta: Float blending value for first style
            Returns:
                Stylized image with pixels in [0,255]
         '''
@@ -76,9 +75,12 @@ class WCT(object):
 
         # Make sure shape is correct and pixels are in [0,1]
         content = self.preprocess(content)
-        style = self.preprocess(style)
+        styles = [
+            self.preprocess(style)
+            for style in styles
+        ]
 
-        stylized = self.model(content, training=False, style=style)
+        stylized = self.model(content, training=False, styles=styles, alpha=alpha, beta=beta)
 
         print("Stylized in:", time.time() - s)
         return self.postprocess(stylized[0])

@@ -20,10 +20,12 @@ def save_img(out_path, img):
     img = np.clip(img, 0, 255).astype(np.uint8)
     scipy.misc.imsave(out_path, img)
 
-def get_img(src):
+def get_img(src, size):
    img = scipy.misc.imread(src, mode='RGB')
    if not (len(img.shape) == 3 and img.shape[2] == 3):
        img = np.dstack((img,img,img))
+    if size > 0:
+        img = resize_to(img, size)
    return img
 
 def center_crop(img, size=256):

@@ -18,7 +18,8 @@ parser.add_argument('--relu-targets', nargs='+', type=str,
                     help='List of reluX_1 layers, corresponding to --checkpoints', required=True)
 parser.add_argument('--vgg-path', type=str, help='Path to vgg_normalised.t7', default='models/vgg_normalised.t7')
 parser.add_argument('--content-path', type=str, dest='content_path', help='Content image or folder of images')
-parser.add_argument('--style-path', type=str, dest='style_path', help='Style image or folder of images')
+parser.add_argument('--style-path_a', type=str, dest='style_path_a', help='Style image')
+parser.add_argument('--style-path_b', type=str, dest='style_path_b', help='Style image')
 parser.add_argument('--out-path', type=str, dest='out_path', help='Output folder path')
 parser.add_argument('--keep-colors', action='store_true', help="Preserve the colors of the style image", default=False)
 parser.add_argument('--device', type=str, help='Device to perform compute on, e.g. /gpu:0', default='/gpu:0')
@@ -29,6 +30,7 @@ parser.add_argument('--content-size', type=int, help="Resize short side of conte
 parser.add_argument('--passes', type=int, help="# of stylization passes per content image", default=1)
 parser.add_argument('-r', '--random', type=int, help="Choose # of random subset of images from style folder", default=0)
 parser.add_argument('--alpha', type=float, help="Alpha blend value", default=1)
+parser.add_argument('--beta', type=float, help="Beta blend value", default=0.5)
 parser.add_argument('--concat', action='store_true', help="Concatenate style image and stylized output", default=False)
 parser.add_argument('--adain', action='store_true', help="Use AdaIN instead of WCT", default=False)
 
@@ -39,6 +41,30 @@ parser.add_argument('--ss-patch-size', type=int, help="Style swap patch size", d
 parser.add_argument('--ss-stride', type=int, help="Style swap stride", default=1)
 
 args = parser.parse_args()
+
+
+def stylize_output(wct_model, content_img, styles):
+    if args.crop_size > 0:
+        styles = [
+            center_crop(style) for style in styles
+        ]
+    if args.keep_colors:
+        styles = [
+            preserve_colors_np(style, content_img) for style in styles
+        ]
+
+    # Run the frame through the style network
+    stylized = content_img
+    for _ in range(args.passes):
+        stylized = wct_model.predict(stylized, styles, args.alpha, args.beta)
+
+    # Stitch the style + stylized output together, but only if there's one style image
+    if args.concat:
+        # Resize style img to same height as frame
+        style_img_resized = scipy.misc.imresize(styles[0], (stylized.shape[0], stylized.shape[0]))
+        stylized = np.hstack([style_img_resized, stylized])
+
+    return stylized
 
 
 def main():
@@ -52,70 +78,20 @@ def main():
                     ss_patch_size=args.ss_patch_size,
                     ss_stride=args.ss_stride)
 
-    # Get content & style full paths
-    if os.path.isdir(args.content_path):
-        content_files = get_files(args.content_path)
-    else:  # Single image file
-        content_files = [args.content_path]
-    if os.path.isdir(args.style_path):
-        style_files = get_files(args.style_path)
-        if args.random > 0:
-            style_files = np.random.choice(style_files, args.random)
-    else:  # Single image file
-        style_files = [args.style_path]
-
     os.makedirs(args.out_path, exist_ok=True)
 
-    count = 0
+    content_img = get_img(args.content_path, args.content_size)
+    styles = [
+        get_img(path, args.style_size)
+        for path in (args.style_path_a, args.style_path_b)
+    ]
 
-    ### Apply each style to each content image
-    for content_fullpath in content_files:
-        content_prefix, content_ext = os.path.splitext(content_fullpath)
-        content_prefix = os.path.basename(content_prefix)  # Extract filename prefix without ext
+    _, content_ext = os.path.splitext(args.content_path)
+    output_filename = os.path.join(args.out_path, f'{args.content_path}_{args.style_path}{content_ext}')
+    output = stylize_output(wct_model, content_img, styles)
+    save_img(output_filename, output)
 
-        content_img = get_img(content_fullpath)
-        if args.content_size > 0:
-            content_img = resize_to(content_img, args.content_size)
-            content_img = center_crop(content_img, 256)
-
-        for style_fullpath in style_files:
-            style_prefix, _ = os.path.splitext(style_fullpath)
-            style_prefix = os.path.basename(style_prefix)  # Extract filename prefix without ext
-
-            style_img = get_img(style_fullpath)
-            style_img = center_crop(style_img, 256)
-
-            if args.style_size > 0:
-                style_img = resize_to(style_img, args.style_size)
-            if args.crop_size > 0:
-                style_img = center_crop(style_img, args.crop_size)
-
-            if args.keep_colors:
-                style_img = preserve_colors_np(style_img, content_img)
-
-            # Run the frame through the style network
-            stylized_rgb = wct_model.predict(content_img, style_img, args.alpha, args.swap5, args.ss_alpha, args.adain)
-
-            if args.passes > 1:
-                for _ in range(args.passes - 1):
-                    stylized_rgb = wct_model.predict(stylized_rgb, style_img, args.alpha, args.swap5, args.ss_alpha,
-                                                     args.adain)
-
-            # Stitch the style + stylized output together, but only if there's one style image
-            if args.concat:
-                # Resize style img to same height as frame
-                style_img_resized = scipy.misc.imresize(style_img, (stylized_rgb.shape[0], stylized_rgb.shape[0]))
-                stylized_rgb = np.hstack([style_img_resized, stylized_rgb])
-
-            # Format for out filename: {out_path}/{content_prefix}_{style_prefix}.{content_ext}
-            out_f = os.path.join(args.out_path, '{}_{}{}'.format(content_prefix, style_prefix, content_ext))
-
-            save_img(out_f, stylized_rgb)
-
-            count += 1
-            print("{}: Wrote stylized output image to {}".format(count, out_f))
-
-    print("Finished stylizing {} outputs in {}s".format(count, time.time() - start))
+    print("Finished stylizing in {}s".format(time.time() - start))
 
 
 if __name__ == '__main__':
