@@ -13,7 +13,7 @@ from vgg_normalised import vgg_from_t7
 class WCTModel(Model):
     '''Model graph for Universal Style Transfer via Feature Transforms from https://arxiv.org/abs/1705.08086'''
 
-    def __init__(self, relu_targets=None, vgg_path=None):
+    def __init__(self, relu_targets=None, vgg_path=None, alpha=0.7, ss_alpha=0.7, use_adain=False):
         '''
             Args:
                 mode: 'train' or 'test'. If 'train' then training & summary ops will be added to the graph
@@ -23,9 +23,9 @@ class WCTModel(Model):
         super().__init__()
         self.vgg_model = vgg_from_t7(vgg_path, target_layer=relu_targets)
         self.relu_targets = relu_targets
-        self.alpha = 0.7
-        self.ss_alpha = 0.7
-        self.use_adain = False
+        self.alpha = alpha
+        self.ss_alpha = ss_alpha
+        self.use_adain = use_adain
         self.encoders = []
         self.decoders = []
 
