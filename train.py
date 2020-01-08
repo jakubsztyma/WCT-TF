@@ -72,7 +72,7 @@ def train():
     batch_shape = (args.batch_size, 256, 256, 3)
     tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
 
-    model = WCTModel(relu_target=args.relu_target, vgg_path=args.vgg_path)
+    model = WCTModel(relu_targets=args.relu_target, vgg_path=args.vgg_path)
 
     config = tf.compat.v1.ConfigProto()
     config.gpu_options.allow_growth = True

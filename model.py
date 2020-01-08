@@ -6,14 +6,14 @@ import tensorflow as tf
 from tensorflow.keras.layers import Input, UpSampling2D
 from tensorflow.keras.models import Model
 
-from ops import Conv2DReflect, Conv2DRelu, wct_style_swap
+from ops import Conv2DReflect, Conv2DRelu, wct_style_swap, adain, wct_tf
 from vgg_normalised import vgg_from_t7
 
 
 class WCTModel(Model):
     '''Model graph for Universal Style Transfer via Feature Transforms from https://arxiv.org/abs/1705.08086'''
 
-    def __init__(self, relu_target=None, vgg_path=None):
+    def __init__(self, relu_targets=None, vgg_path=None):
         '''
             Args:
                 mode: 'train' or 'test'. If 'train' then training & summary ops will be added to the graph
@@ -21,11 +21,15 @@ class WCTModel(Model):
                 vgg_path: Normalised VGG19 .t7 path
         '''
         super().__init__()
-        self.vgg_model = vgg_from_t7(vgg_path, target_layer=relu_target)
+        self.vgg_model = vgg_from_t7(vgg_path, target_layer=relu_targets)
+        self.relu_targets = relu_targets
+        self.alpha = 0.7
+        self.ss_alpha = 0.7
+        self.use_adain = False
         self.encoders = []
         self.decoders = []
 
-        for relu_target in relu_target:
+        for relu_target in relu_targets:
             self.encoders.append(self.build_encoder(relu_target))
             self.decoders.append(self.build_decoder(relu_target))
 
@@ -33,7 +37,7 @@ class WCTModel(Model):
         if training:
             decoded = self.train_call(content)
         else:
-            decoded = self.test_call(content)
+            decoded = self.test_call(content, style)
 
         return decoded
 
@@ -41,16 +45,35 @@ class WCTModel(Model):
         decoder_input = self.encoders[0](content)
         return self.decoders[0](decoder_input)
 
-    def test_call(self, content):
+    def test_call(self, content, style):
         encoder_input = content
         decoded = []
 
-        for encoder, decoder in zip(self.encoders, self.decoders):
-            encoded = encoder(encoder_input)
-            decoded = decoder(encoded)
+        for encoder, decoder, relu_target in zip(self.encoders, self.decoders, self.relu_targets):
+            content_encoded = encoder(encoder_input)
+
+            style_encoded = encoder(style)
+            decoder_input = self.calculate_decoder_input(content_encoded, style_encoded, relu_target)
+
+            decoded = decoder(decoder_input)
             encoder_input = decoded
 
         return decoded
+
+    def calculate_decoder_input(self, content_encoded, style_encoded, relu_target):
+        if relu_target == 'relu5_1':
+            decoder_input = self.calculate_decoder_input_relu5(content_encoded, style_encoded)
+        else:
+            decoder_input = self.calculate_decoder_input_relu1_relu4(content_encoded, style_encoded)
+        return decoder_input
+
+    def calculate_decoder_input_relu5(self, content_encoded, style_encoded):
+        return tf.case([(self.swap5, lambda: wct_style_swap(content_encoded, style_encoded, self.ss_alpha, 3, 1)),
+                (self.use_adain, lambda: adain(content_encoded, style_encoded, self.alpha))],
+                default=lambda: wct_tf(content_encoded, style_encoded, self.alpha))
+
+    def calculate_decoder_input_relu1_relu4(self, content_encoded, style_encoded):
+        return tf.cond(self.use_adain, lambda: adain(content_encoded, style_encoded, self.alpha), lambda: wct_tf(content_encoded, style_encoded, self.alpha))
 
     def get_layer_channels_number(self, relu_target):
         content_layer = self.vgg_model.get_layer(relu_target).output

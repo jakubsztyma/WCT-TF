@@ -27,7 +27,7 @@ class WCT(object):
         self.ss_stride = ss_stride
 
         # Build the graph
-        self.model = WCTModel(relu_target=relu_targets, vgg_path=vgg_path)
+        self.model = WCTModel(relu_targets=relu_targets, vgg_path=vgg_path)
 
         config = tf.compat.v1.ConfigProto()
         config.gpu_options.allow_growth = True
