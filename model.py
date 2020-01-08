@@ -61,10 +61,11 @@ class WCTModel(Model):
         return decoded
 
     def calculate_decoder_input(self, content_encoded, style_encoded, relu_target):
-        if relu_target == 'relu5_1':
-            decoder_input = self.calculate_decoder_input_relu5(content_encoded, style_encoded)
-        else:
-            decoder_input = self.calculate_decoder_input_relu1_relu4(content_encoded, style_encoded)
+        # if relu_target == 'relu5_1':
+        #     self.swap5 = style_encoded
+        #     decoder_input = self.calculate_decoder_input_relu5(content_encoded, style_encoded)
+        # else:
+        decoder_input = self.calculate_decoder_input_relu1_relu4(content_encoded, style_encoded)
         return decoder_input
 
     def calculate_decoder_input_relu5(self, content_encoded, style_encoded):
