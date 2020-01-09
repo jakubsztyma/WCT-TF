@@ -87,8 +87,10 @@ def train():
     @tf.function
     def train_step(images, labels):
         with tf.GradientTape() as tape:
-            predictions = model(images, training=True)
-            loss = loss_object(labels, predictions)
+            predictions, decoded_encoded, content_encoded = model(images, training=True)
+            pixel_loss = loss_object(labels, predictions)
+            feature_loss = loss_object(content_encoded, decoded_encoded)
+            loss = pixel_loss + feature_loss
         gradients = tape.gradient(loss, model.trainable_variables)
         optimizer.apply_gradients(zip(gradients, model.trainable_variables))
 
@@ -96,7 +98,7 @@ def train():
 
     @tf.function
     def test_step(images, labels):
-        predictions = model(images, training=True)
+        predictions, _, _ = model(images, training=True)
         t_loss = loss_object(labels, predictions)
 
         test_loss(t_loss)
