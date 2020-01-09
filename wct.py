@@ -80,7 +80,7 @@ class WCT(object):
             for style in styles
         ]
 
-        stylized = self.model(content, training=False, styles=styles, alpha=alpha, beta=beta)
+        stylized = self.model(content, training=False, styles=styles)
 
         print("Stylized in:", time.time() - s)
         return self.postprocess(stylized[0])

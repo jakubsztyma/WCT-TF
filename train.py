@@ -10,6 +10,9 @@ import tensorflow as tf
 from model import WCTModel
 from utils import get_files, get_img_random_crop
 
+# python3 train.py --relu-target relu2_1 --content ./content --checkpoint ./models --max-iter=10
+
+
 mse = tf.compat.v1.losses.mean_squared_error
 
 kwargs_list = [

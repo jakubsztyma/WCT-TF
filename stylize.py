@@ -11,6 +11,9 @@ from utils import get_files, get_img, save_img, resize_to, center_crop
 from utils import preserve_colors_np
 from wct import WCT
 
+# python3 stylize.py --checkpoints models/relu5_1 models/relu4_1 models/relu3_1 models/relu2_1 models/relu1_1 --relu-targets relu5_1 relu4_1 relu3_1 relu2_1 relu1_1 --style-size 512 --alpha 0.8 --style-path ./styles/banded_0002.jpg --content-path gilbert_50.jpg --out-path result
+
+
 parser = argparse.ArgumentParser()
 
 parser.add_argument('--checkpoints', nargs='+', type=str, help='List of checkpoint directories', required=True)
@@ -87,7 +90,7 @@ def main():
     ]
 
     _, content_ext = os.path.splitext(args.content_path)
-    output_filename = os.path.join(args.out_path, f'{args.content_path}_{args.style_path}{content_ext}')
+    output_filename = os.path.join(args.out_path, "result.jpg")#f'{args.content_path}_{args.style_path_a}.{content_ext}')
     output = stylize_output(wct_model, content_img, styles)
     save_img(output_filename, output)
 
