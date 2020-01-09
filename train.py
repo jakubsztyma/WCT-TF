@@ -125,8 +125,6 @@ def train():
             test_loss.reset_states()
 
     # Last save
-    # save_path = os.path.join(args.checkpoint)
-    # model.decoders[0].save(save_path)
     save_path = os.path.join(args.checkpoint, 'model.ckpt')
     checkpoint.save(file_prefix=save_path)
     print(f"Model saved in file: {save_path}")

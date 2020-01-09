@@ -33,13 +33,10 @@ class WCT(object):
         config.gpu_options.allow_growth = True
 
         # Load decoder vars one-by-one into the graph
-        i = 0
-        for checkpoint_dir in checkpoints:
+        for i, checkpoint_dir in enumerate(checkpoints):
             if os.path.exists(checkpoint_dir):
                 checkpoint = tf.train.Checkpoint(model=self.model.decoders[i])
                 checkpoint.restore(tf.train.latest_checkpoint(checkpoint_dir))
-                # self.model.decoders[i] = tf.keras.models.load_model(checkpoint_dir)
-                i += 1
             else:
                 raise Exception('No checkpoint found for target {} in dir {}'.format(relu_targets[0], checkpoint_dir))
 

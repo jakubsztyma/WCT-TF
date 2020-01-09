@@ -54,29 +54,15 @@ class WCTModel(Model):
         for encoder, decoder, relu_target in zip(self.encoders, self.decoders, self.relu_targets):
             content_encoded = encoder(encoder_input)
 
-            decoder_input = content_encoded
             style_encoded = encoder(style)
-            decoder_input = self.calculate_decoder_input(content_encoded, style_encoded, relu_target)
+            decoder_input = self.calculate_decoder_input(content_encoded, style_encoded)
 
             decoded = decoder(decoder_input)
             encoder_input = decoded
 
         return decoded
 
-    def calculate_decoder_input(self, content_encoded, style_encoded, relu_target):
-        # if relu_target == 'relu5_1':
-        #     self.swap5 = style_encoded
-        #     decoder_input = self.calculate_decoder_input_relu5(content_encoded, style_encoded)
-        # else:
-        decoder_input = self.calculate_decoder_input_relu1_relu4(content_encoded, style_encoded)
-        return decoder_input
-
-    def calculate_decoder_input_relu5(self, content_encoded, style_encoded):
-        return tf.case([(self.swap5, lambda: wct_style_swap(content_encoded, style_encoded, self.ss_alpha, 3, 1)),
-                (self.use_adain, lambda: adain(content_encoded, style_encoded, self.alpha))],
-                default=lambda: wct_tf(content_encoded, style_encoded, self.alpha))
-
-    def calculate_decoder_input_relu1_relu4(self, content_encoded, style_encoded):
+    def calculate_decoder_input(self, content_encoded, style_encoded):
         return tf.cond(self.use_adain, lambda: adain(content_encoded, style_encoded, self.alpha), lambda: wct_tf(content_encoded, style_encoded, self.alpha))
 
     def get_layer_channels_number(self, relu_target):
