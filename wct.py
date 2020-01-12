@@ -15,7 +15,7 @@ class WCT(object):
     '''Styilze images with trained WCT model'''
 
     def __init__(self, checkpoints, relu_targets, vgg_path, device='/gpu:0',
-                 ss_patch_size=3, ss_stride=1): 
+                 ss_patch_size=3, ss_stride=1, alpha=0.5, beta=0.5):
         '''
             Args:
                 checkpoints: List of trained decoder model checkpoint dirs
@@ -27,7 +27,7 @@ class WCT(object):
         self.ss_stride = ss_stride
 
         # Build the graph
-        self.model = WCTModel(relu_targets=relu_targets, vgg_path=vgg_path)
+        self.model = WCTModel(relu_targets=relu_targets, vgg_path=vgg_path, alpha=alpha, beta=beta)
 
         config = tf.compat.v1.ConfigProto()
         config.gpu_options.allow_growth = True
@@ -51,7 +51,7 @@ class WCT(object):
     def postprocess(image):
         return np.uint8(np.clip(image, 0, 1) * 255)
 
-    def predict(self, content, styles, alpha=1, swap5=False, beta=0.5):
+    def predict(self, content, styles, swap5=False):
         '''Stylize a single content/style pair.
 
            Args:

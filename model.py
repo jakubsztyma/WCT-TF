@@ -34,7 +34,7 @@ class WCTModel(Model):
             self.encoders.append(self.build_encoder(relu_target))
             self.decoders.append(self.build_decoder(relu_target))
 
-    def __call__(self, content, training, styles):
+    def __call__(self, content, training, styles=None):
         if training:
             decoded, decoded_encoded, content_encoded = self.train_call(content)
             return decoded, decoded_encoded, content_encoded
@@ -63,11 +63,13 @@ class WCTModel(Model):
 
             content_encoded = encoder(encoder_input)
 
+            # decoded = decoder(content_encoded)
+            # encoder_input = decoded
+
             style_encoded = encoder(style)
             decoder_input = self.calculate_decoder_input(content_encoded, style_encoded)
 
             decoded = decoder(decoder_input)
-            encoder_input = decoded
 
         return decoded
 

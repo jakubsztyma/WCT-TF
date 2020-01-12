@@ -11,7 +11,7 @@ from utils import get_files, get_img, save_img, resize_to, center_crop
 from utils import preserve_colors_np
 from wct import WCT
 
-# python3 stylize.py --checkpoints models/relu5_1 models/relu4_1 models/relu3_1 models/relu2_1 models/relu1_1 --relu-targets relu5_1 relu4_1 relu3_1 relu2_1 relu1_1 --style-size 512 --alpha 0.8 --style-path ./styles/banded_0002.jpg --content-path gilbert_50.jpg --out-path result
+# python3 stylize.py --checkpoints models/relu5_1 models/relu4_1 models/relu3_1 models/relu2_1 models/relu1_1 --relu-targets relu5_1 relu4_1 relu3_1 relu2_1 relu1_1 --style-size 512 --alpha 0.8 --style-path ./styles/bubbly_0060.jpg --content-path gilbert.jpg --out-path result
 
 
 parser = argparse.ArgumentParser()
@@ -21,8 +21,7 @@ parser.add_argument('--relu-targets', nargs='+', type=str,
                     help='List of reluX_1 layers, corresponding to --checkpoints', required=True)
 parser.add_argument('--vgg-path', type=str, help='Path to vgg_normalised.t7', default='models/vgg_normalised.t7')
 parser.add_argument('--content-path', type=str, dest='content_path', help='Content image or folder of images')
-parser.add_argument('--style-path_a', type=str, dest='style_path_a', help='Style image')
-parser.add_argument('--style-path_b', type=str, dest='style_path_b', help='Style image')
+parser.add_argument('--style-paths', nargs='+', type=str, dest='style_paths', help='Style images')
 parser.add_argument('--out-path', type=str, dest='out_path', help='Output folder path')
 parser.add_argument('--keep-colors', action='store_true', help="Preserve the colors of the style image", default=False)
 parser.add_argument('--device', type=str, help='Device to perform compute on, e.g. /gpu:0', default='/gpu:0')
@@ -59,7 +58,7 @@ def stylize_output(wct_model, content_img, styles):
     # Run the frame through the style network
     stylized = content_img
     for _ in range(args.passes):
-        stylized = wct_model.predict(stylized, styles, args.alpha, args.beta)
+        stylized = wct_model.predict(stylized, styles)
 
     # Stitch the style + stylized output together, but only if there's one style image
     if args.concat:
@@ -72,6 +71,8 @@ def stylize_output(wct_model, content_img, styles):
 
 def main():
     start = time.time()
+    if len(args.style_paths) > 2:
+        raise Exception('Maximum number of styles should be 2')
 
     # Load the WCT model
     wct_model = WCT(checkpoints=args.checkpoints,
@@ -79,14 +80,16 @@ def main():
                     vgg_path=args.vgg_path,
                     device=args.device,
                     ss_patch_size=args.ss_patch_size,
-                    ss_stride=args.ss_stride)
+                    ss_stride=args.ss_stride,
+                    alpha=args.alpha,
+                    beta=args.beta)
 
     os.makedirs(args.out_path, exist_ok=True)
 
     content_img = get_img(args.content_path, args.content_size)
     styles = [
         get_img(path, args.style_size)
-        for path in (args.style_path_a, args.style_path_b)
+        for path in args.style_paths
     ]
 
     _, content_ext = os.path.splitext(args.content_path)
