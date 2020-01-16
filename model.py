@@ -13,7 +13,7 @@ from vgg_normalised import vgg_from_t7
 class WCTModel(Model):
     '''Model graph for Universal Style Transfer via Feature Transforms from https://arxiv.org/abs/1705.08086'''
 
-    def __init__(self, relu_targets=None, vgg_path=None, alpha=0.7, ss_alpha=0.7, use_adain=False):
+    def __init__(self, relu_targets=None, vgg_path=None, alpha=0.7, beta=0.5, ss_alpha=0.7, use_adain=False):
         '''
             Args:
                 mode: 'train' or 'test'. If 'train' then training & summary ops will be added to the graph
@@ -24,6 +24,7 @@ class WCTModel(Model):
         self.vgg_model = vgg_from_t7(vgg_path, target_layer=relu_targets)
         self.relu_targets = relu_targets
         self.alpha = alpha
+        self.beta = beta
         self.ss_alpha = ss_alpha
         self.use_adain = use_adain
         self.encoders = []
@@ -33,12 +34,12 @@ class WCTModel(Model):
             self.encoders.append(self.build_encoder(relu_target))
             self.decoders.append(self.build_decoder(relu_target))
 
-    def __call__(self, content, training, style=None):
+    def __call__(self, content, training, styles=None):
         if training:
             decoded, decoded_encoded, content_encoded = self.train_call(content)
             return decoded, decoded_encoded, content_encoded
         else:
-            decoded = self.test_call(content, style)
+            decoded = self.test_call(content, styles[0])
             return decoded
 
     def train_call(self, content):
@@ -52,13 +53,23 @@ class WCTModel(Model):
         decoded = []
 
         for encoder, decoder, relu_target in zip(self.encoders, self.decoders, self.relu_targets):
+            # t = content
+            # for style, blend in zip(styles, (beta, 1 - beta)):
+            #     content_encoded = self.encoder(t)
+            #     style_encoded = self.encoder(style)
+            #     total_blend = blend * alpha
+            #     t = wct_style_swap(content_encoded, style_encoded, total_blend)
+            #     t = self.decoder(t)
+
             content_encoded = encoder(encoder_input)
+
+            # decoded = decoder(content_encoded)
+            # encoder_input = decoded
 
             style_encoded = encoder(style)
             decoder_input = self.calculate_decoder_input(content_encoded, style_encoded)
 
             decoded = decoder(decoder_input)
-            encoder_input = decoded
 
         return decoded
 

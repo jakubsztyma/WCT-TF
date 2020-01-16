@@ -10,6 +10,9 @@ import tensorflow as tf
 from model import WCTModel
 from utils import get_files, get_img_random_crop
 
+# python3 train.py --relu-target relu2_1 --content ./content --checkpoint ./models --max-iter=10
+
+
 mse = tf.compat.v1.losses.mean_squared_error
 
 kwargs_list = [
@@ -83,6 +86,8 @@ def train():
     test_loss = tf.keras.metrics.Mean()
     train_loss = tf.keras.metrics.Mean()
     checkpoint = tf.train.Checkpoint(model=model.decoders[0])
+    manager = tf.train.CheckpointManager(checkpoint, args.checkpoint, max_to_keep=1)
+    checkpoint.restore(manager.latest_checkpoint)
 
     @tf.function
     def train_step(images, labels):
@@ -98,8 +103,10 @@ def train():
 
     @tf.function
     def test_step(images, labels):
-        predictions, _, _ = model(images, training=True)
-        t_loss = loss_object(labels, predictions)
+        predictions, decoded_encoded, content_encoded = model(images, training=True)
+        t_pixel_loss = loss_object(labels, predictions)
+        t_feature_loss = loss_object(content_encoded, decoded_encoded)
+        t_loss = t_pixel_loss + t_feature_loss
 
         test_loss(t_loss)
 
@@ -125,9 +132,8 @@ def train():
             test_loss.reset_states()
 
     # Last save
-    save_path = os.path.join(args.checkpoint, 'model.ckpt')
-    checkpoint.save(file_prefix=save_path)
-    print(f"Model saved in file: {save_path}")
+    manager.save()
+    print(f"Model saved in file: {manager.latest_checkpoint}")
 
 
 if __name__ == '__main__':
